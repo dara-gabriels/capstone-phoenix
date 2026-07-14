@@ -25,6 +25,7 @@
       - kubernetes
       - pyyaml
     executable: pip3
+    extra_args: --break-system-packages  --ignore-installed
 
 - name: Check whether Helm is already installed
   ansible.builtin.command: helm version --short
@@ -110,28 +111,40 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
+- name: Ensure /opt/taskapp/k3s_platform exists
+  ansible.builtin.file:
+    path: /opt/taskapp/k3s_platform
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  # tighten this to '0700' owned by root if this directory only ever
+  # holds the rendered Secret, ClusterIssuer, and root Application —
+  # 0755 world-readable is unnecessary once you know nothing sensitive
+  # sits in there for more than a task or two
+
 - name: Render Let's Encrypt ClusterIssuer
   ansible.builtin.template:
     src: cluster-issuer.yaml.j2
-    dest: /opt/taskapp/cluster-issuer.yaml
+    dest: /opt/taskapp/k3s_platform/cluster-issuer.yaml
     mode: '0644'
 
 - name: Apply the ClusterIssuer
   kubernetes.core.k8s:
-    src: /opt/taskapp/cluster-issuer.yaml
+    src: /opt/taskapp/k3s_platform/cluster-issuer.yaml
     state: present
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
 # --- metrics-server (required for the HPA) -----------------------------
-- name: Install metrics-server
-  kubernetes.core.helm:
-    name: metrics-server
-    chart_ref: metrics-server/metrics-server
-    chart_version: "{{ metrics_server_chart_version }}"
-    release_namespace: kube-system
-  environment:
-    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+#- name: Install metrics-server
+#  kubernetes.core.helm:
+#    name: metrics-server
+#    chart_ref: metrics-server/metrics-server
+#    chart_version: "{{ metrics_server_chart_version }}"
+#    release_namespace: kube-system
+#  environment:
+#    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
 # --- Observability (kube-prometheus-stack: Prometheus + Grafana + node
 #     exporter + kube-state-metrics, all in-cluster - replaces the old
@@ -192,19 +205,19 @@
 - name: Render the taskapp Secret
   ansible.builtin.template:
     src: taskapp-secret.yaml.j2
-    dest: /opt/taskapp/taskapp-secret.yaml
+    dest: /opt/taskapp/k3s_platform/taskapp-secret.yaml
     mode: '0600'
 
 - name: Apply the taskapp Secret
   kubernetes.core.k8s:
-    src: /opt/taskapp/taskapp-secret.yaml
+    src: /opt/taskapp/k3s_platform/taskapp-secret.yaml
     state: present
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
 - name: Remove the rendered Secret manifest from disk once applied
   ansible.builtin.file:
-    path: /opt/taskapp/taskapp-secret.yaml
+    path: /opt/taskapp/k3s_platform/taskapp-secret.yaml
     state: absent
 
 # --- The one-time GitOps bootstrap --------------------------------------
@@ -216,12 +229,12 @@
 - name: Render the root Argo CD Application (points at this repo's gitops/taskapp path)
   ansible.builtin.template:
     src: root-application.yaml.j2
-    dest: /opt/taskapp/root-application.yaml
+    dest: /opt/taskapp/k3s_platform/root-application.yaml
     mode: '0644'
 
 - name: Apply the root Argo CD Application
   kubernetes.core.k8s:
-    src: /opt/taskapp/root-application.yaml
+    src: /opt/taskapp/k3s_platform/root-application.yaml
     state: present
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml

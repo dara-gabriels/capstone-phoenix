@@ -2,7 +2,7 @@
 - name: Install the platform (ingress-nginx, cert-manager, metrics-server,
     observability, Argo CD) and bootstrap GitOps ownership of the app
   hosts: k3s_master
-  become: false
+  become: true
   gather_facts: true
   roles:
     - k3s_platform
