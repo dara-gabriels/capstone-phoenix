@@ -1,0 +1,9 @@
+.ansible_vault_pass
+
+
+# Ansible secrets
+*.vault_pass
+.vault_pass
+*.pem
+kubeconfig*
+config-taskapp*

@@ -1,0 +1,3 @@
+---
+# No handlers needed - nothing in this role manages a firewall or agent
+# service that would need restarting on change.

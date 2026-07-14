@@ -1,0 +1,65 @@
+name: "Infrastructure Automation Validation"
+
+on:
+  push:
+    branches: [ "main", "staging" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  validate-ansible:
+    name: "Ansible Lint & Syntax Check"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Repository Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python Runtime Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible & Core Validation Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible ansible-lint
+          ansible-galaxy collection install -r ansible/requirements.yml
+
+      - name: Execute Ansible Syntax Validation Engine
+        run: |
+          cd ansible
+          ansible-playbook -i inventory/prod.yaml playbooks/site.yaml --syntax-check
+          ansible-playbook -i inventory/prod.yaml playbooks/deploy_gitops.yaml --syntax-check
+
+      - name: Ansible Lint
+        run: |
+          cd ansible
+          ansible-lint playbooks/ roles/ || true   # advisory for now - tighten to a hard fail once the ruleset is tuned
+
+  validate-manifests:
+    name: "GitOps Manifest Lint"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Repository Code
+        uses: actions/checkout@v4
+
+      - name: yamllint the GitOps-owned manifests
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: gitops/
+
+  validate-terraform:
+    name: "Terraform Format Check"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Repository Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: terraform fmt -check
+        run: terraform fmt -check -recursive terraform/

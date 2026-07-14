@@ -1,0 +1,43 @@
+---
+# Populate the ansible_host IPs below from `terraform output` after
+# `terraform apply` in terraform/environments/prod. Everything else in
+# this file should not need to change.
+
+all:
+  vars:
+    env: prod
+    ansible_user: ubuntu
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_private_key_file: "~/.ssh/taskapp_key_pair.pem"
+    # Every private-subnet host is reached by hopping through the bastion -
+    # nothing except the bastion has a public IP, and 6443/22 are only ever
+    # open to the bastion's security group.
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ProxyJump=ubuntu@44.195.0.220'
+
+  children:
+    bastion:
+      hosts:
+        bastion-01:
+          ansible_host: "44.195.0.220"
+          ansible_ssh_common_args: "-o StrictHostKeyChecking=no"   # bastion itself: no ProxyJump, it IS the jump host
+
+    k3s_master:
+      hosts:
+        k3s-master-01:
+          ansible_host: "10.0.2.193"
+
+    k3s_worker:
+      hosts:
+        k3s-worker-0logout1:
+          ansible_host: "10.0.2.31"
+        k3s-worker-02:
+          ansible_host: "10.0.3.186"
+
+    k3s:
+      children:
+        k3s_master:
+        k3s_worker:
+
+    private_subnet:
+      children:
+        k3s:

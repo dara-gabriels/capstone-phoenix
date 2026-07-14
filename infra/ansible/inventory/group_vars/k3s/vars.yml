@@ -1,0 +1,6 @@
+---
+# Group-specific: needs a live hostvars lookup, so it can't live in
+# group_vars/all (that's evaluated before host facts are guaranteed
+# available in every code path). Shared, static values (CIDRs,
+# k3s_disable_traefik, etc.) live in group_vars/all/vars.yaml instead.
+k3s_server_private_ip: "{{ hostvars['k3s-master-01']['ansible_host'] }}"

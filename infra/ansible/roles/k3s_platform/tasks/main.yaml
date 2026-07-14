@@ -1,0 +1,233 @@
+---
+# This role runs on k3s-master-01 only (see playbooks/deploy_gitops.yaml)
+# and does two distinct things, in order:
+#
+#   1. Install the platform: ingress-nginx, cert-manager (+ ClusterIssuer),
+#      metrics-server, kube-prometheus-stack, Argo CD. These are cluster
+#      add-ons, not "the app" - the brief allows them to be installed by
+#      Ansible/Helm rather than owned by GitOps.
+#   2. Create the taskapp namespace + the one Secret the app needs (from
+#      ansible-vault, never from git), then hand the rest of the app off
+#      to Argo CD by applying ONE root Application resource that points at
+#      this repo's gitops/taskapp/ path. From that point on, every change
+#      to the app is: edit gitops/taskapp/*.yaml, commit, push - Argo CD
+#      notices and reconciles it. Nobody runs `kubectl apply` against the
+#      app again.
+
+- name: Ensure pip is available for the kubernetes.core collection
+  ansible.builtin.apt:
+    name: python3-pip
+    state: present
+
+- name: Ensure the Python Kubernetes client is installed
+  ansible.builtin.pip:
+    name:
+      - kubernetes
+      - pyyaml
+    executable: pip3
+
+- name: Check whether Helm is already installed
+  ansible.builtin.command: helm version --short
+  register: helm_check
+  changed_when: false
+  failed_when: false
+
+- name: Install Helm {{ helm_version }}
+  when: helm_check.rc != 0
+  block:
+    - name: Download Helm install script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get-helm-3.sh
+        mode: '0700'
+
+    - name: Run Helm install script
+      ansible.builtin.command: /tmp/get-helm-3.sh --version {{ helm_version }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Add required Helm repositories
+  kubernetes.core.helm_repository:
+    name: "{{ item.name }}"
+    repo_url: "{{ item.url }}"
+  loop:
+    - { name: ingress-nginx, url: "https://kubernetes.github.io/ingress-nginx" }
+    - { name: jetstack, url: "https://charts.jetstack.io" }
+    - { name: metrics-server, url: "https://kubernetes-sigs.github.io/metrics-server/" }
+    - { name: prometheus-community, url: "https://prometheus-community.github.io/helm-charts" }
+    - { name: argo, url: "https://argoproj.github.io/argo-helm" }
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+# --- Ingress controller -----------------------------------------------
+# NodePorts are fixed and match the Terraform NLB target groups
+# (ingress_http_node_port / ingress_https_node_port). DaemonSet so every
+# worker can receive traffic - the NLB doesn't care which worker it hits.
+- name: Install ingress-nginx
+  kubernetes.core.helm:
+    name: ingress-nginx
+    chart_ref: ingress-nginx/ingress-nginx
+    chart_version: "{{ ingress_nginx_chart_version }}"
+    release_namespace: ingress-nginx
+    create_namespace: true
+    values:
+      controller:
+        kind: DaemonSet
+        service:
+          type: NodePort
+          nodePorts:
+            http: "{{ ingress_http_node_port }}"
+            https: "{{ ingress_https_node_port }}"
+        publishService:
+          enabled: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+# --- cert-manager + Let's Encrypt --------------------------------------
+- name: Install cert-manager (CRDs included)
+  kubernetes.core.helm:
+    name: cert-manager
+    chart_ref: jetstack/cert-manager
+    chart_version: "{{ cert_manager_chart_version }}"
+    release_namespace: cert-manager
+    create_namespace: true
+    values:
+      crds:
+        enabled: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Wait for the cert-manager webhook to be ready before creating a ClusterIssuer
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    name: cert-manager-webhook
+    namespace: cert-manager
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 180
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Render Let's Encrypt ClusterIssuer
+  ansible.builtin.template:
+    src: cluster-issuer.yaml.j2
+    dest: /opt/taskapp/cluster-issuer.yaml
+    mode: '0644'
+
+- name: Apply the ClusterIssuer
+  kubernetes.core.k8s:
+    src: /opt/taskapp/cluster-issuer.yaml
+    state: present
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+# --- metrics-server (required for the HPA) -----------------------------
+- name: Install metrics-server
+  kubernetes.core.helm:
+    name: metrics-server
+    chart_ref: metrics-server/metrics-server
+    chart_version: "{{ metrics_server_chart_version }}"
+    release_namespace: kube-system
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+# --- Observability (kube-prometheus-stack: Prometheus + Grafana + node
+#     exporter + kube-state-metrics, all in-cluster - replaces the old
+#     separate monitoring VM entirely) ------------------------------------
+- name: Install kube-prometheus-stack
+  kubernetes.core.helm:
+    name: kube-prometheus-stack
+    chart_ref: prometheus-community/kube-prometheus-stack
+    chart_version: "{{ kube_prometheus_stack_chart_version }}"
+    release_namespace: monitoring
+    create_namespace: true
+    values:
+      grafana:
+        adminUser: "{{ grafana_admin_user }}"
+        adminPassword: "{{ vault_grafana_admin_password }}"
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+# --- Argo CD -------------------------------------------------------------
+- name: Install Argo CD
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo/argo-cd
+    chart_version: "{{ argocd_chart_version }}"
+    release_namespace: argocd
+    create_namespace: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Wait for the Argo CD server to be ready
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    name: argocd-server
+    namespace: argocd
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 180
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+# --- App namespace + Secret (out-of-band, from ansible-vault - never in
+#     git). This is the ONE piece of the app's state that GitOps does not
+#     own, by design: a Secret's real values can't safely live in a public
+#     git repo without something like Sealed Secrets/External Secrets
+#     (documented as a follow-up in docs/ARCHITECTURE.md). Everything else
+#     about the app - Deployments, StatefulSet, Service, ConfigMap,
+#     Ingress, HPA, NetworkPolicy, PDB - is 100% owned by Argo CD below. ---
+- name: Create the taskapp namespace
+  kubernetes.core.k8s:
+    name: taskapp
+    kind: Namespace
+    state: present
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Render the taskapp Secret
+  ansible.builtin.template:
+    src: taskapp-secret.yaml.j2
+    dest: /opt/taskapp/taskapp-secret.yaml
+    mode: '0600'
+
+- name: Apply the taskapp Secret
+  kubernetes.core.k8s:
+    src: /opt/taskapp/taskapp-secret.yaml
+    state: present
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Remove the rendered Secret manifest from disk once applied
+  ansible.builtin.file:
+    path: /opt/taskapp/taskapp-secret.yaml
+    state: absent
+
+# --- The one-time GitOps bootstrap --------------------------------------
+# This is the only "kubectl apply" the app itself ever gets from a human/
+# Ansible. It creates ONE Application resource; from here on, Argo CD's
+# own reconciliation loop is what applies everything in gitops/taskapp/,
+# not this playbook. Re-running this task is safe (idempotent) if you
+# ever need to point the cluster at a different repo/branch.
+- name: Render the root Argo CD Application (points at this repo's gitops/taskapp path)
+  ansible.builtin.template:
+    src: root-application.yaml.j2
+    dest: /opt/taskapp/root-application.yaml
+    mode: '0644'
+
+- name: Apply the root Argo CD Application
+  kubernetes.core.k8s:
+    src: /opt/taskapp/root-application.yaml
+    state: present
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Show how to check sync status
+  ansible.builtin.debug:
+    msg: >-
+      Argo CD is reconciling gitops/taskapp/ now. Check with:
+      kubectl -n argocd get application taskapp

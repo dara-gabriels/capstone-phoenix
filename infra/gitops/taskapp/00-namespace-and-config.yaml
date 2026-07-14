@@ -1,0 +1,28 @@
+# Namespace is also created out-of-band by Ansible before the Secret, so
+# this is a no-op most of the time - it stays here anyway so `taskapp` is
+# fully described by this directory, and so a fresh cluster bootstrapped
+# straight from Argo CD (skipping the Ansible Secret step temporarily)
+# still gets a namespace to put things in.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: taskapp
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+
+---
+# Non-secret config only. The one thing that IS secret (the DB password /
+# connection string) lives in the `taskapp-secrets` Secret, applied
+# out-of-band by Ansible from ansible-vault - see docs/ARCHITECTURE.md for
+# why that one resource isn't GitOps-owned.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: taskapp-config
+  namespace: taskapp
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+data:
+  POSTGRES_DB: "taskapp"
+  POSTGRES_USER: "taskapp_user"
+  FLASK_ENV: "production"

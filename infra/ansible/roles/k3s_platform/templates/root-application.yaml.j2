@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: taskapp
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: "{{ taskapp_gitops_repo_url }}"
+    targetRevision: "{{ taskapp_gitops_revision }}"
+    path: "{{ taskapp_gitops_path }}"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: taskapp
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false   # the namespace is created out-of-band, before the Secret
+      - ServerSideApply=true

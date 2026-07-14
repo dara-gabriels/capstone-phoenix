@@ -1,0 +1,23 @@
+---
+# Cheap single-node sandbox - one k3s node acting as its own master+agent.
+# Populate before use.
+
+all:
+  vars:
+    env: dev
+
+  children:
+    bastion:
+      hosts:
+        bastion-01:
+          ansible_host: "<DEV_BASTION_PUBLIC_IP>"
+    k3s_master:
+      hosts:
+        k3s-master-01:
+          ansible_host: "<DEV_K3S_PRIVATE_IP>"
+    k3s:
+      children:
+        k3s_master:
+    private_subnet:
+      children:
+        k3s:

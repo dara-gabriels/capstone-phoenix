@@ -1,0 +1,21 @@
+---
+- name: Base host configuration - all nodes
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - common
+
+- name: Bastion-specific hardening
+  hosts: bastion
+  become: true
+  gather_facts: true
+  roles:
+    - bastion
+
+- name: K3s cluster bring-up - server first, then agents join
+  hosts: k3s
+  become: true
+  gather_facts: true
+  roles:
+    - k3s

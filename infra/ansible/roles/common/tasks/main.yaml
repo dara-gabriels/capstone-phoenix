@@ -1,0 +1,52 @@
+---
+- name: System Environment Validation and Base Configurations
+  block:
+    - name: Enforce System Timezone to {{ timezone }}
+      community.general.timezone:
+        name: "{{ timezone }}"
+
+    - name: Setup Application Operating System Group
+      ansible.builtin.group:
+        name: "{{ app_group }}"
+        state: present
+        system: true
+
+    - name: Setup Application Operating System User
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        group: "{{ app_group }}"
+        shell: /usr/sbin/nologin
+        create_home: false
+        system: true
+
+    - name: Ensure Application Base Directory Tree Exists
+      ansible.builtin.file:
+        path: "{{ app_base_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+
+    - name: Install Common OS-Level Package Dependencies
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - software-properties-common
+          - python3-pip
+          - python3-venv
+          - unzip
+          - git
+          - htop
+          - chrony
+        state: present
+        update_cache: true
+
+    # No ufw/iptables/fail2ban here on purpose. Every network boundary in
+    # this project is an AWS Security Group (see terraform/modules/security_groups) -
+    # one place to read, one place to audit, and it can't drift host-to-host
+    # the way hand-maintained firewall rules can. Host-level firewalling
+    # would be redundant defense-in-depth at best and a second source of
+    # truth to keep in sync at worst.

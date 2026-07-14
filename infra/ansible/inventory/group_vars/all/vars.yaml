@@ -1,0 +1,32 @@
+---
+# Non-secret, shared config. Real secrets (DB password, etc.) live in
+# vault.yaml (ansible-vault encrypted) - see vault.yaml.example.
+
+timezone: UTC
+
+k3s_version: "v1.29.4+k3s1"
+k3s_cluster_cidr: "10.42.0.0/16"
+k3s_service_cidr: "10.43.0.0/16"
+
+# Traefik (k3s's bundled ingress controller) is disabled deliberately -
+# we install ingress-nginx via Helm instead, so its NodePorts are known
+# and stable and match the Terraform NLB target group ports.
+k3s_disable_traefik: true
+
+kubeconfig_fetch_path: "{{ playbook_dir }}/../kubeconfig-taskapp-prod"
+
+app_user: taskapp
+app_group: taskapp
+app_base_dir: /opt/taskapp
+
+# --- App / GitOps identity - fill these in for your fork ---
+app_domain: "taskjob.name.ng"          # your real domain
+letsencrypt_email: "oyewoleoyeking@gmail.com"       # required by Let's Encrypt
+taskapp_gitops_repo_url: "https://github.com/dara-gabriels/capstone-phoenix.git"
+taskapp_gitops_path: "gitops/taskapp"
+taskapp_gitops_revision: "main"
+
+# --- Ingress-nginx NodePorts - MUST match terraform/environments/prod
+#     variables ingress_http_node_port / ingress_https_node_port ---
+ingress_http_node_port: 30080
+ingress_https_node_port: 30443

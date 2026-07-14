@@ -1,0 +1,67 @@
+# Sync-wave -1: Argo CD applies this AFTER the -2 wave (Postgres) is
+# healthy, and waits for this Job to reach Complete before moving on to
+# wave 0 (the backend/frontend Deployments). This is exactly the race the
+# capstone brief calls out - migrations do NOT run in the replicas'
+# entrypoint, so 2+ backend replicas never race each other on
+# `flask db upgrade`.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: taskapp-db-migration
+  namespace: taskapp
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: taskapp
+        tier: migration
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:15-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          command:
+            - sh
+            - -c
+            # postgres-svc is a headless Service (clusterIP: None), which still
+            # gets a normal DNS record - it resolves to the backing Pod IP(s).
+            # This was previously "postgres-headless", a Service that doesn't
+            # exist; fixed to the real Service name below.
+            - until pg_isready -h postgres-svc.taskapp.svc.cluster.local -p 5432 -U taskapp_user; do sleep 2; done
+      containers:
+        - name: alembic-migrator
+          image: ghcr.io/ts-a-devops/taskapp-backend:c2b906d
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          command: ["flask", "db", "upgrade"]
+          envFrom:
+            - configMapRef:
+                name: taskapp-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: taskapp-secrets
+                  key: DATABASE_URL
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"

@@ -1,0 +1,24 @@
+---
+- name: Fail Fast If Master Node Token Variable Map Is Absent
+  ansible.builtin.fail:
+    msg: "The variable k3s_node_token is not defined on k3s-master-01. Fact mapping loop failed."
+  when: hostvars['k3s-master-01']['k3s_node_token'] is not defined
+
+- name: Join Private Subnet Target Worker Node to K3s Cluster Architecture
+  ansible.builtin.shell: >
+    curl -sfL https://get.k3s.io |
+    INSTALL_K3S_VERSION={{ k3s_version }}
+    K3S_URL=https://{{ k3s_server_private_ip }}:6443
+    K3S_TOKEN={{ hostvars['k3s-master-01']['k3s_node_token'] }}
+    sh -
+  args:
+    creates: /usr/local/bin/k3s-agent
+
+- name: Wait for K3s Agent Service to Reach Stabilized Active State
+  ansible.builtin.systemd:
+    name: k3s-agent
+    state: started
+  register: k3s_agent_status
+  retries: 15
+  delay: 5
+  until: k3s_agent_status.status.ActiveState == "active"

@@ -1,0 +1,16 @@
+---
+# Copy this file to vault.yaml, fill in real values, then encrypt it:
+#
+#   cp vault.yaml.example vault.yaml
+#   $EDITOR vault.yaml
+#   ansible-vault encrypt vault.yaml
+#
+# vault.yaml (the encrypted file) IS meant to be committed - that's the
+# whole point of ansible-vault. vault.yaml.example (this file, with
+# placeholders only) is committed too, as documentation of what keys are
+# expected. Never commit vault.yaml unencrypted - .gitignore does not
+# protect you here, ansible-vault is the only thing that does.
+
+vault_admin_cidr: "REPLACE_WITH_your_ip/32"          # curl -s ifconfig.me
+vault_postgres_password: "REPLACE_WITH_a_generated_password"
+vault_grafana_admin_password: "REPLACE_WITH_a_generated_password"

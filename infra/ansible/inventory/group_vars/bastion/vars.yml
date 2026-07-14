@@ -1,0 +1,4 @@
+---
+# Bastion is internet-facing and gets the strictest posture of any host.
+ssh_allowed_cidr: "{{ vault_admin_cidr }}"
+enable_auditd: true

@@ -1,0 +1,3 @@
+---
+# k3s's install script manages its own systemd unit lifecycle; nothing
+# here needs a handler-triggered restart under normal operation.

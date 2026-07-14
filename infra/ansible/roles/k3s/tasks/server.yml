@@ -1,0 +1,57 @@
+---
+- name: Install K3s Control Plane Server Node
+  ansible.builtin.shell: >
+    curl -sfL https://get.k3s.io |
+    INSTALL_K3S_VERSION={{ k3s_version }} sh -s - server
+    --write-kubeconfig-mode 644
+    --tls-san {{ ansible_host }}
+    --cluster-cidr {{ k3s_cluster_cidr | default('10.42.0.0/16') }}
+    --service-cidr {{ k3s_service_cidr | default('10.43.0.0/16') }}
+    {% if k3s_disable_traefik %}--disable=traefik{% endif %}
+  args:
+    creates: /usr/local/bin/k3s
+  register: k3s_server_install
+
+- name: Wait for K3s Service to be Active
+  ansible.builtin.systemd:
+    name: k3s
+    state: started
+  register: k3s_service_status
+  retries: 15
+  delay: 5
+  until: k3s_service_status.status.ActiveState == "active"
+
+- name: Wait for Node Token File to Exist on Disk
+  ansible.builtin.wait_for:
+    path: /var/lib/rancher/k3s/server/node-token
+    timeout: 60
+
+- name: Slurp Cryptographic Node Token File
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: node_token_b64
+
+- name: Propagate Token to Global Shared Fact Storage Loop
+  ansible.builtin.set_fact:
+    k3s_node_token: "{{ node_token_b64.content | b64decode | trim }}"
+
+- name: Fetch Cluster Kubeconfig Block to Control Machine
+  ansible.builtin.fetch:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "{{ kubeconfig_fetch_path }}"
+    flat: true
+
+  # Deliberately left pointing at https://127.0.0.1:6443 - the master has
+  # no public IP and 6443 is only open to the bastion's security group
+  # (see terraform/modules/security_groups), so "reachable from your
+  # laptop" always means "through an SSH tunnel to the bastion", never a
+  # direct address. Rewriting this to the master's private IP would just
+  # produce a kubeconfig that fails outside the VPC either way - 127.0.0.1
+  # is the only address that's correct on both sides of the tunnel below.
+
+- name: Display Kubeconfig Environmental Usage Parameters
+  ansible.builtin.debug:
+    msg: >-
+      kubectl needs a tunnel to reach 6443 (never public - see SETUP_GUIDE.md
+      section 6): ssh -L 6443:{{ ansible_host }}:6443 taskapp-bastion -N &
+      then: export KUBECONFIG={{ kubeconfig_fetch_path }} && kubectl get nodes

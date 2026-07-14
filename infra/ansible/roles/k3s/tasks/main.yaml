@@ -1,0 +1,23 @@
+---
+# Because this role is included from a SINGLE flattened play
+# (playbooks/site.yaml), and Ansible's linear strategy advances
+# task-by-task across the whole batch of hosts, importing server.yml's
+# tasks before agent.yml's tasks here guarantees the master's
+# token-generation completes before any worker's token-consumption task
+# is reached - even though every host runs through this same role in the
+# same play.
+#
+# This role's job ends at "k3s is installed and joined, kubeconfig is on
+# your laptop." Installing platform add-ons (ingress-nginx, cert-manager,
+# Argo CD, ...) and pointing Argo CD at the app repo is the k3s_platform
+# role's job (master-only, run separately via playbooks/deploy_gitops.yaml)
+# - kept apart deliberately so "stand up a cluster" and "install the
+# platform on it" stay two separate, individually re-runnable steps.
+
+- name: Run k3s server tasks (applies only to k3s_master hosts)
+  ansible.builtin.import_tasks: server.yml
+  when: "'k3s_master' in group_names"
+
+- name: Run k3s agent tasks (applies only to k3s_worker hosts)
+  ansible.builtin.import_tasks: agent.yml
+  when: "'k3s_worker' in group_names"

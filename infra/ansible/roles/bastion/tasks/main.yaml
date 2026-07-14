@@ -1,0 +1,18 @@
+---
+# NAT for the private subnet is handled by the managed AWS NAT Gateway
+# (terraform/modules/vpc) - the bastion does not also run iptables
+# MASQUERADE. Two NAT paths for the same traffic is one too many, and a
+# managed NAT Gateway is more reliable than a hand-maintained iptables rule
+# on a box whose only job is to be an SSH jump host.
+#
+# The bastion's actual job: be the one host with a public IP and an SSH
+# listener, so nothing else needs one. All its access control is the
+# bastion security group (SSH from your IP only) - see security_groups
+# module. This role just adds a couple of light, host-level touches on
+# top of what the `common` role already does.
+
+- name: Enable auditd for SSH/session auditing on the internet-facing host
+  ansible.builtin.apt:
+    name: auditd
+    state: present
+  when: enable_auditd | default(true)

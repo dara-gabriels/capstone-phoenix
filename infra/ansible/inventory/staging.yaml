@@ -1,0 +1,29 @@
+---
+# Template - populate with real values once a staging environment exists.
+# Mirrors prod.yaml's group structure exactly so playbooks need no changes
+# to target staging; only inventory differs.
+
+all:
+  vars:
+    env: staging
+
+  children:
+    bastion:
+      hosts:
+        bastion-01:
+          ansible_host: "<STAGING_BASTION_PUBLIC_IP>"
+    k3s_master:
+      hosts:
+        k3s-master-01:
+          ansible_host: "<STAGING_K3S_MASTER_PRIVATE_IP>"
+    k3s_worker:
+      hosts:
+        k3s-worker-01:
+          ansible_host: "<STAGING_K3S_WORKER1_PRIVATE_IP>"
+    k3s:
+      children:
+        k3s_master:
+        k3s_worker:
+    private_subnet:
+      children:
+        k3s:

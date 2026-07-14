@@ -1,0 +1,3 @@
+---
+# Helm releases are reconciled by re-running `helm upgrade --install` in
+# tasks/ - no separate restart handler needed.
