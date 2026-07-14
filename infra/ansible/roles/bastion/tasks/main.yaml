@@ -16,3 +16,24 @@
     name: auditd
     state: present
   when: enable_auditd | default(true)
+
+- name: Ensure auditd is running and enabled
+  ansible.builtin.systemd:
+    name: auditd
+    state: started
+    enabled: true
+  when: enable_auditd | default(true)
+
+- name: Harden sshd - disable password auth, keys only
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+  notify: reload sshd
+
+#- name: Harden sshd - disable root login
+#  ansible.builtin.lineinfile:
+#    path: /etc/ssh/sshd_config
+#    regexp: '^#?PermitRootLogin'
+#    line: 'PermitRootLogin no'
+#  notify: reload sshd

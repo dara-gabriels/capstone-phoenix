@@ -1,0 +1,82 @@
+[
+    {
+        "IpProtocol": "tcp",
+        "FromPort": 6443,
+        "ToPort": 6443,
+        "UserIdGroupPairs": [
+            {
+                "Description": "Kubernetes API (6443) from bastion only - never from 0.0.0.0/0",
+                "UserId": "717827130829",
+                "GroupId": "sg-02f3c930067aba65b"
+            },
+            {
+                "Description": "Kubernetes API between K3s nodes (agent-to-server join/heartbeat)",
+                "UserId": "717827130829",
+                "GroupId": "sg-0036dc47dd7047158"
+            }
+        ],
+        "IpRanges": [],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+    },
+    {
+        "IpProtocol": "tcp",
+        "FromPort": 22,
+        "ToPort": 22,
+        "UserIdGroupPairs": [
+            {
+                "Description": "SSH from bastion only",
+                "UserId": "717827130829",
+                "GroupId": "sg-02f3c930067aba65b"
+            }
+        ],
+        "IpRanges": [],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+    },
+    {
+        "IpProtocol": "udp",
+        "FromPort": 8472,
+        "ToPort": 8472,
+        "UserIdGroupPairs": [
+            {
+                "Description": "Flannel VXLAN between K3s nodes",
+                "UserId": "717827130829",
+                "GroupId": "sg-0036dc47dd7047158"
+            }
+        ],
+        "IpRanges": [],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+    },
+    {
+        "IpProtocol": "tcp",
+        "FromPort": 10250,
+        "ToPort": 10250,
+        "UserIdGroupPairs": [
+            {
+                "Description": "Kubelet API between K3s nodes",
+                "UserId": "717827130829",
+                "GroupId": "sg-0036dc47dd7047158"
+            }
+        ],
+        "IpRanges": [],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+    },
+    {
+        "IpProtocol": "tcp",
+        "FromPort": 30080,
+        "ToPort": 30443,
+        "UserIdGroupPairs": [
+            {
+                "Description": "Ingress-nginx NodePorts, from the NLB only",
+                "UserId": "717827130829",
+                "GroupId": "sg-0815538aa53f0cbb1"
+            }
+        ],
+        "IpRanges": [],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+    }
+]

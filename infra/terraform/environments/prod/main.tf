@@ -29,7 +29,7 @@ module "ec2" {
   environment   = var.environment
   vpc_id        = module.vpc.vpc_id
   ami_id        = module.core.ubuntu_ami_id
-  key_pair_name = "taskapp_key_pair"
+  key_pair_name = var.key_pair_name
 
   bastion_instance_type    = var.bastion_instance_type
   k3s_master_instance_type = var.k3s_master_instance_type
