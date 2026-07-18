@@ -42,7 +42,7 @@ spec:
             - until pg_isready -h postgres-svc.taskapp.svc.cluster.local -p 5432 -U taskapp_user; do sleep 2; done
       containers:
         - name: alembic-migrator
-          image: ghcr.io/ts-a-devops/taskapp-backend:c2b906d
+          image: ghcr.io/ts-a-devops/taskapp-backend:5d6b8fc
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

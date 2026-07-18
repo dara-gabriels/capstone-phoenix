@@ -41,7 +41,7 @@ spec:
               tier: frontend
       containers:
         - name: frontend-ui
-          image: ghcr.io/ts-a-devops/taskapp-frontend:c2b906d   # pinned to commit SHA, never :latest
+          image: ghcr.io/ts-a-devops/taskapp-frontend:26da2b0   # pinned to commit SHA, never :latest
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

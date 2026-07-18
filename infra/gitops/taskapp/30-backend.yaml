@@ -41,7 +41,7 @@ spec:
               tier: backend
       containers:
         - name: backend-engine
-          image: ghcr.io/ts-a-devops/taskapp-backend:c2b906d   # pinned to commit SHA, never :latest
+          image: ghcr.io/ts-a-devops/taskapp-backend:5d6b8fc   # pinned to commit SHA, never :latest
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
