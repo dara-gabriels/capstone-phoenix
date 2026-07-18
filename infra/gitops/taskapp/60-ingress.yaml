@@ -13,10 +13,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - http://taskjob.name.ng/   # your real domain (app_domain)
+        - http://taskapp.taskjob.name.ng/   # your real domain (app_domain)
       secretName: taskapp-tls
   rules:
-    - host: http://taskjob.name.ng/  # your real domain (app_domain)
+    - host: http://taskapp.taskjob.name.ng/  # your real domain (app_domain)
       http:
         paths:
           # Same-origin API: /api/* goes to the backend, everything else to

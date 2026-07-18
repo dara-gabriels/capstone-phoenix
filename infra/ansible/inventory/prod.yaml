@@ -12,26 +12,26 @@ all:
     # Every private-subnet host is reached by hopping through the bastion -
     # nothing except the bastion has a public IP, and 6443/22 are only ever
     # open to the bastion's security group.
-    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ProxyJump=ubuntu@100.53.218.243'
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ProxyJump=ubuntu@44.222.81.102'
 
   children:
     bastion:
       hosts:
         bastion-01:
-          ansible_host: "100.53.218.243"
+          ansible_host: "44.222.81.102"
           ansible_ssh_common_args: "-o StrictHostKeyChecking=no"   # bastion itself: no ProxyJump, it IS the jump host
 
     k3s_master:
       hosts:
         k3s-master-01:
-          ansible_host: "10.0.2.238"
+          ansible_host: "10.0.2.250"
 
     k3s_worker:
       hosts:
         k3s-worker-01:
-          ansible_host: "10.0.2.97"
+          ansible_host: "10.0.2.84"
         k3s-worker-02:
-          ansible_host: "10.0.3.52"
+          ansible_host: "10.0.3.101"
 
     k3s:
       children:

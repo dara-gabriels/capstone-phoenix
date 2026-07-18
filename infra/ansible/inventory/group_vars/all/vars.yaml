@@ -20,7 +20,7 @@ app_group: taskapp
 app_base_dir: /opt/taskapp
 
 # --- App / GitOps identity - fill these in for your fork ---
-app_domain: "taskjob.name.ng"          # your real domain
+app_domain: "taskapp.taskjob.name.ng"          # your real domain
 letsencrypt_email: "oyewoleoyeking@gmail.com"       # required by Let's Encrypt
 taskapp_gitops_repo_url: "https://github.com/dara-gabriels/capstone-phoenix.git"
 taskapp_gitops_path: "gitops/taskapp"
