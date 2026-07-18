@@ -23,7 +23,7 @@ app_base_dir: /opt/taskapp
 app_domain: "taskapp.taskjob.name.ng"          # your real domain
 letsencrypt_email: "oyewoleoyeking@gmail.com"       # required by Let's Encrypt
 taskapp_gitops_repo_url: "https://github.com/dara-gabriels/capstone-phoenix.git"
-taskapp_gitops_path: "gitops/taskapp"
+taskapp_gitops_path: "infra/gitops/taskapp"
 taskapp_gitops_revision: "main"
 
 # --- Ingress-nginx NodePorts - MUST match terraform/environments/prod
