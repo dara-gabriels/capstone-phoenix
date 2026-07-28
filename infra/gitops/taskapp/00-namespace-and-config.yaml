@@ -26,3 +26,4 @@ data:
   POSTGRES_DB: "taskapp"
   POSTGRES_USER: "taskapp_user"
   FLASK_ENV: "production"
+  FLASK_APP: "taskapp.app:create_app"
