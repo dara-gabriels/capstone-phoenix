@@ -56,6 +56,16 @@ spec:
                 secretKeyRef:
                   name: taskapp-secrets
                   key: DATABASE_URL
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: taskapp-secrets
+                  key: DATABASE_PASSWORD
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: taskapp-secrets
+                  key: SECRET_KEY
           ports:
             - containerPort: 5000
           volumeMounts:

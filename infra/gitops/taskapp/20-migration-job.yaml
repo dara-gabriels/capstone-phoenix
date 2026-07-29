@@ -58,6 +58,11 @@ spec:
                 secretKeyRef:
                   name: taskapp-secrets
                   key: DATABASE_URL
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: taskapp-secrets
+                  key: DATABASE_PASSWORD
           resources:
             requests:
               memory: "128Mi"
