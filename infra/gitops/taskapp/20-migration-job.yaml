@@ -48,7 +48,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-          command: ["flask", "db", "upgrade"]
+          command: ["alembic", "upgrade", "head"]
           envFrom:
             - configMapRef:
                 name: taskapp-config
