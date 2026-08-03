@@ -22,7 +22,7 @@ healthy before moving to the next:
 | -2 | Postgres StatefulSet + PVC + Service | Pod Ready |
 | -1 | DB migration Job | Job `Complete` |
 | 0 | Backend + frontend Deployments + Services | Deployment `Available` |
-| 1 | HPA, PDBs, NetworkPolicy, Ingress | exists |
+| 1 | HPA, PDBs, Ingress | exists |
 
 This is what makes the migration-race requirement in the capstone brief
 hold: migrations always finish *before* any backend replica starts

@@ -44,7 +44,7 @@ spec:
           image: ghcr.io/ts-a-devops/taskapp-backend:5d6b8fc   # pinned to commit SHA, never :latest
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            #readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           envFrom:
@@ -56,11 +56,19 @@ spec:
                 secretKeyRef:
                   name: taskapp-secrets
                   key: DATABASE_URL
+                  
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: taskapp-secrets
+                  key: DATABASE_USER
+
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: taskapp-secrets
                   key: DATABASE_PASSWORD
+            
             - name: SECRET_KEY
               valueFrom:
                 secretKeyRef:
@@ -83,19 +91,19 @@ spec:
               path: /api/health
               port: 5000
             failureThreshold: 30
-            periodSeconds: 5
+            periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /api/health
               port: 5000
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /api/health
-              port: 5000
             initialDelaySeconds: 15
-            periodSeconds: 20
+            periodSeconds: 10
+          #livenessProbe:         # removed because it was causing the backend to be killed during # the live failover demo, which is not desirable.  The startupProbe and readinessProbe are sufficient.
+          #  httpGet:
+          #    path: /api/health
+          #    port: 5000
+          #  initialDelaySeconds: 15
+          #  periodSeconds: 20
       volumes:
         - name: tmp
           emptyDir: {}
@@ -131,8 +139,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: backend
-  minReplicas: 2
-  maxReplicas: 6
+  minReplicas: 1
+  maxReplicas: 2
   metrics:
     - type: Resource
       resource:
